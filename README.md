@@ -96,8 +96,6 @@ npx playwright show-report
 | Open https://www.kriso.ee | Confirm the page has a Kriso title/logo |
 | Search for keyword "harry potter" | Confirm multiple products are shown |
 | | All listed items contain the searched keyword in their title or description |
-| | Products can be sorted |
-| Sort results by price | Verify products are sorted in the expected order (e.g., low to high or high to low) |
 | Filter by language (e.g., English) | Verify only products in that language appear |
 | Filter by format (e.g., "Kõvakaaneline" / hardback) | Confirm fewer items are listed and all match the selected format |
 
