@@ -108,7 +108,7 @@ test.describe('Add Books to Shopping Cart', () => {
   }
 
   async function getResultsCount() {
-    const resultsText = await page.locator('.sb-results-total').textContent();
+    const resultsText = await page.locator('.sb-results-total').first().textContent();
     return Number((resultsText || '').replace(/\D/g, '')) || 0;
   }
 

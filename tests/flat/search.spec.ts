@@ -45,7 +45,7 @@ test.describe('Search for Books by Keywords', () => {
     test('Test search results contain keyword', async () => {
     await searchFor('tolkien');
 
-    const resultsText = await page.locator('.sb-results-total').textContent();
+    const resultsText = await page.locator('.sb-results-total').first().textContent();
     const total = Number((resultsText || '').replace(/\D/g, '')) || 0;
     expect(total).toBeGreaterThan(1);
 

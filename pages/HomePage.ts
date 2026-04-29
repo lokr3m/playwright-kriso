@@ -125,27 +125,41 @@ export class HomePage extends BasePage {
   }
 
   private async clickVisibleAddToCartByIndex(index: number) {
-    const count = await this.addToCartLinks.count();
+    // Broaden the locator: on Kriso "add to cart" can be a button (not a link),
+    // and the label can vary by language.
+    const addToCartControls = this.page
+      .getByRole('link', { name: /Lisa ostukorvi|Ostukorvi|Add to cart/i })
+      .or(this.page.getByRole('button', { name: /Lisa ostukorvi|Ostukorvi|Add to cart/i }));
+
+    // Give the page a moment to render results & controls (CI can be slower).
+    await addToCartControls.first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => null);
+
+    const count = await addToCartControls.count();
+    if (count === 0) {
+      throw new Error('No add-to-cart controls found (link/button) on the page.');
+    }
+
     const visibleIndexes: number[] = [];
     const maxChecks = Math.min(count, 20);
 
     for (let i = 0; i < maxChecks; i += 1) {
-      if (await this.addToCartLinks.nth(i).isVisible().catch(() => false)) {
+      if (await addToCartControls.nth(i).isVisible().catch(() => false)) {
         visibleIndexes.push(i);
       }
     }
 
     if (visibleIndexes.length > 0) {
       const safeVisibleIndex = Math.min(index, visibleIndexes.length - 1);
-      await this.addToCartLinks.nth(visibleIndexes[safeVisibleIndex]).click();
+      const target = addToCartControls.nth(visibleIndexes[safeVisibleIndex]);
+      await target.scrollIntoViewIfNeeded().catch(() => null);
+      await target.click();
       return;
     }
 
-    if (count > 0) {
-      const safeIndex = Math.min(index, count - 1);
-      await this.addToCartLinks.nth(safeIndex).click();
-      return;
-    }
-    throw new Error('No add-to-cart links found on the page.');
+    // Fallback: click by index even if visibility checks didn't find any visible ones
+    const safeIndex = Math.min(index, count - 1);
+    const target = addToCartControls.nth(safeIndex);
+    await target.scrollIntoViewIfNeeded().catch(() => null);
+    await target.click();
   }
 }
