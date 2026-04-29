@@ -111,9 +111,8 @@ test.describe('Add Books to Shopping Cart', () => {
   } else {
     await input.press('Enter');
   }
-
-  // wait for results page to render (CI can be slow)
-  await expect(page.getByText(/Search Results|FEATURED/i)).toBeVisible({ timeout: 15_000 });
+  
+  await expect(page.locator('.sb-results-total').first()).toBeVisible({ timeout: 15_000 });
 }
 
   async function getResultsCount() {
