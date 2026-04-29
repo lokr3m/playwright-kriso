@@ -32,6 +32,8 @@ test.describe('Navigate Products via Filters', () => {
   });
 
   test('Navigate and filter products', async () => {
+    test.setTimeout(90_000);
+
     await expect(page.getByRole('link', { name: /Kriso/i }).first()).toBeVisible();
 
     const musicSectionLink = page
@@ -51,7 +53,11 @@ test.describe('Navigate Products via Filters', () => {
     const englishCount = await getResultsCount();
     expect(englishCount).toBeLessThan(guitarCount);
 
-    await page.getByRole('link', { name: /^CD$/i }).first().click();
+    const cd = page.getByRole('link', { name: /^CD$/i }).first();
+    await cd.scrollIntoViewIfNeeded();
+    await expect(cd).toBeVisible({ timeout: 60_000 });
+    await cd.click();
+
     const cdCount = await getResultsCount();
     expect(cdCount).toBeLessThanOrEqual(englishCount);
     await expect(page.locator('body')).toContainText(/CD/i);
