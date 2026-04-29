@@ -45,11 +45,17 @@ test.describe('Add Books to Shopping Cart', () => {
   });
 
   test('Test add book to cart', async () => {
-    await addToCartByIndex(0);
-    await expect(page.locator('.item-messagebox')).toContainText(/Toode lisati ostukorvi|added to (shopping )?cart/i);
-    await expect(page.locator('.cart-products')).toContainText('1');
-    await page.locator('.cartbtn-event.back').click();
-  });
+  // ensure we are on a results page with products
+  await searchFor('tolkien');
+
+  await addToCartByIndex(0);
+
+  await expect(page.locator('.item-messagebox')).toContainText(
+    /Toode lisati ostukorvi|added to (shopping )?cart/i
+  );
+  await expect(page.locator('.cart-products')).toContainText('1');
+  await page.locator('.cartbtn-event.back').click();
+});
 
   test('Test add second book to cart', async () => {
     await addToCartByIndex(1);
@@ -90,22 +96,25 @@ test.describe('Add Books to Shopping Cart', () => {
   });
 
   async function searchFor(keyword: string) {
-    const preferredInput = page
-      .getByRole('textbox', { name: /Pealkiri|Title|ISBN|märksõna|keyword/i })
-      .first();
-    const input = (await preferredInput.isVisible().catch(() => false))
-      ? preferredInput
-      : page.getByRole('textbox').first();
+  const preferredInput = page
+    .getByRole('textbox', { name: /Pealkiri|Title|ISBN|märksõna|keyword/i })
+    .first();
+  const input = (await preferredInput.isVisible().catch(() => false))
+    ? preferredInput
+    : page.getByRole('textbox').first();
 
-    await input.fill(keyword);
-    const searchButton = page.getByRole('button', { name: /Search|Otsi/i }).first();
-    if (await searchButton.isVisible().catch(() => false)) {
-      await searchButton.click();
-      return;
-    }
+  await input.fill(keyword);
 
+  const searchButton = page.getByRole('button', { name: /Search|Otsi/i }).first();
+  if (await searchButton.isVisible().catch(() => false)) {
+    await searchButton.click();
+  } else {
     await input.press('Enter');
   }
+
+  // wait for results page to render (CI can be slow)
+  await expect(page.getByText(/Search Results|FEATURED/i)).toBeVisible({ timeout: 15_000 });
+}
 
   async function getResultsCount() {
     const resultsText = await page.locator('.sb-results-total').first().textContent();
@@ -113,35 +122,27 @@ test.describe('Add Books to Shopping Cart', () => {
   }
 
   async function addToCartByIndex(index: number) {
-  const addToCartControls = page
-    .getByRole('link', { name: /Lisa ostukorvi|Ostukorvi|Add to cart|Cart|Basket/i })
-    .or(page.getByRole('button', { name: /Lisa ostukorvi|Ostukorvi|Add to cart|Cart|Basket/i }));
+  // 1) Open product page from results (there is no add-to-cart on the cards)
+  const productLinks = page.getByRole('link', { name: /tolkien/i });
 
-  // CI can be slower — wait until at least one control becomes visible (if it exists)
-  await addToCartControls.first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => null);
+  await expect(productLinks.first()).toBeVisible({ timeout: 15_000 });
 
-  const count = await addToCartControls.count();
+  const count = await productLinks.count();
   if (count === 0) {
-    throw new Error('No add-to-cart controls found (link/button) on the page.');
-  }
-
-  const visibleIndexes: number[] = [];
-  const maxChecks = Math.min(count, 20);
-
-  for (let i = 0; i < maxChecks; i += 1) {
-    if (await addToCartControls.nth(i).isVisible().catch(() => false)) {
-      visibleIndexes.push(i);
-    }
-  }
-
-  if (visibleIndexes.length > 0) {
-    const safeVisibleIndex = Math.min(index, visibleIndexes.length - 1);
-    await addToCartControls.nth(visibleIndexes[safeVisibleIndex]).click();
-    return;
+    throw new Error('No product links found on the results page.');
   }
 
   const safeIndex = Math.min(index, count - 1);
-  await addToCartControls.nth(safeIndex).click();
+  await productLinks.nth(safeIndex).click();
+
+  // 2) Click add-to-cart on product page
+  const addToCart = page
+    .getByRole('button', { name: /Lisa ostukorvi|Ostukorvi|Add to cart/i })
+    .or(page.getByRole('link', { name: /Lisa ostukorvi|Ostukorvi|Add to cart/i }))
+    .first();
+
+  await expect(addToCart).toBeVisible({ timeout: 15_000 });
+  await addToCart.click();
 }
 
   async function returnBasketSum() {

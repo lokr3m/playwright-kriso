@@ -45,11 +45,12 @@ test.describe('Add Books to Shopping Cart (POM)', () => {
   });
 
   test('Test add book to cart', async () => {
-    await homePage.addToCartByIndex(0);
-    await homePage.verifyAddToCartMessage();
-    await homePage.verifyCartCount(1);
-    await homePage.goBackFromCart();
-  }); 
+  await homePage.searchFor('tolkien');
+  await homePage.addToCartByIndex(0);
+  await homePage.verifyAddToCartMessage();
+  await homePage.verifyCartCount(1);
+  await homePage.goBackFromCart();
+});
 
   test('Test add second book to cart', async () => {
     await homePage.addToCartByIndex(1);

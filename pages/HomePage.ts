@@ -74,8 +74,31 @@ export class HomePage extends BasePage {
     return new ProductPage(this.page);
   }
 
+  async searchFor(keyword: string) {
+    const preferredInput = this.page
+      .getByRole('textbox', { name: /Pealkiri|Title|ISBN|märksõna|keyword/i })
+      .first();
+
+    const input = (await preferredInput.isVisible().catch(() => false))
+      ? preferredInput
+      : this.page.getByRole('textbox').first();
+
+    await input.fill(keyword);
+
+    const searchButton = this.page.getByRole('button', { name: /Search|Otsi/i }).first();
+    if (await searchButton.isVisible().catch(() => false)) {
+      await searchButton.click();
+    } else {
+      await input.press('Enter');
+    }
+
+    // wait for results page to render
+    await this.page.getByText(/Search Results|FEATURED/i).first()
+      .waitFor({ state: 'visible', timeout: 15_000 })
+      .catch(() => null);
+  }
+
   async addToCartByIndex(index: number) {
-    await this.ensureAddToCartLinksAvailable();
     await this.clickVisibleAddToCartByIndex(index);
   }
 
