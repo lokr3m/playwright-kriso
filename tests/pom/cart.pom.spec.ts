@@ -41,8 +41,8 @@ test.describe('Add Books to Shopping Cart (POM)', () => {
 
   test('Test search by keyword', async () => {
     await homePage.searchByKeyword('harry potter');
-    await homePage.verifyResultsCountMoreThan(1)
-  }); 
+    await homePage.verifyResultsCountMoreThan(1);
+  });
 
   test('Test add book to cart', async () => {
     await homePage.addToCartByIndex(0);
@@ -52,27 +52,31 @@ test.describe('Add Books to Shopping Cart (POM)', () => {
   }); 
 
   test('Test add second book to cart', async () => {
-    await homePage.addToCartByIndex(5);
+    await homePage.addToCartByIndex(1);
     await homePage.verifyAddToCartMessage();
     await homePage.verifyCartCount(2);
-  }); 
+  });
 
   test('Test cart count and sum is correct', async () => {
     cartPage = await homePage.openShoppingCart();
     await cartPage.verifyCartCount(2);
+    await cartPage.verifyTwoDistinctItems();
     
     basketSumOfTwo = await cartPage.verifyCartSumIsCorrect();
-  }); 
+  });
 
 
   test('Test remove item from cart and counter sum is correct', async () => {
+    const removedTitle = (await cartPage.getCartItemTitles())[0];
     await cartPage.removeItemByIndex(0);
     await cartPage.verifyCartCount(1);
 
     basketSumOfOne = await cartPage.verifyCartSumIsCorrect();
 
     expect(basketSumOfOne).toBeLessThan(basketSumOfTwo);
+    if (removedTitle) {
+      await cartPage.verifyTitleRemoved(removedTitle);
+    }
   });
 
-}); 
-
+});

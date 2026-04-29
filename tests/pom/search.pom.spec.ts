@@ -10,6 +10,8 @@ import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { HomePage } from '../../pages/HomePage';
 
+test.describe.configure({ mode: 'serial' });
+
 let page: Page;
 let homePage: HomePage;
 
@@ -34,21 +36,21 @@ test.describe('Search for Books by Keywords (POM)', () => {
     }); 
 
     test('Test no products found', async () => {
-      await homePage.searchByKeyword('jaslkfjalskjdkls');
+      await homePage.searchByKeyword('xqzwmfkj');
       await homePage.verifyNoProductsFoundMessage();
     });
 
     test('Test search results contain keyword', async () => {
     await homePage.searchByKeyword('tolkien');
-    await homePage.verifyResultsCountMoreThan(1)
-
-    //TODO check results contain keyword
+    await homePage.verifyResultsCountMoreThan(1);
+    await homePage.verifyResultsContainKeyword('tolkien');
   });
 
     test('Test search by ISBN', async () => {
     await homePage.searchByKeyword('9780307588371');
 
-    //TODO check correct book is shown
+    await homePage.verifyBookShown('Gone Girl');
+    await homePage.verifyIsbnShown('9780307588371');
   });
 
 });
