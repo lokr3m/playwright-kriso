@@ -113,30 +113,36 @@ test.describe('Add Books to Shopping Cart', () => {
   }
 
   async function addToCartByIndex(index: number) {
-    const addToCartLinks = page.getByRole('link', { name: /Lisa ostukorvi|Add to cart/i });
-    const count = await addToCartLinks.count();
+  const addToCartControls = page
+    .getByRole('link', { name: /Lisa ostukorvi|Ostukorvi|Add to cart|Cart|Basket/i })
+    .or(page.getByRole('button', { name: /Lisa ostukorvi|Ostukorvi|Add to cart|Cart|Basket/i }));
 
-    const visibleIndexes: number[] = [];
-    const maxChecks = Math.min(count, 20);
+  // CI can be slower — wait until at least one control becomes visible (if it exists)
+  await addToCartControls.first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => null);
 
-    for (let i = 0; i < maxChecks; i += 1) {
-      if (await addToCartLinks.nth(i).isVisible().catch(() => false)) {
-        visibleIndexes.push(i);
-      }
-    }
-
-    if (visibleIndexes.length > 0) {
-      await addToCartLinks.nth(visibleIndexes[Math.min(index, visibleIndexes.length - 1)]).click();
-      return;
-    }
-
-    if (count > 0) {
-      await addToCartLinks.nth(Math.min(index, count - 1)).click();
-      return;
-    }
-
-    throw new Error('No add-to-cart links found on the page.');
+  const count = await addToCartControls.count();
+  if (count === 0) {
+    throw new Error('No add-to-cart controls found (link/button) on the page.');
   }
+
+  const visibleIndexes: number[] = [];
+  const maxChecks = Math.min(count, 20);
+
+  for (let i = 0; i < maxChecks; i += 1) {
+    if (await addToCartControls.nth(i).isVisible().catch(() => false)) {
+      visibleIndexes.push(i);
+    }
+  }
+
+  if (visibleIndexes.length > 0) {
+    const safeVisibleIndex = Math.min(index, visibleIndexes.length - 1);
+    await addToCartControls.nth(visibleIndexes[safeVisibleIndex]).click();
+    return;
+  }
+
+  const safeIndex = Math.min(index, count - 1);
+  await addToCartControls.nth(safeIndex).click();
+}
 
   async function returnBasketSum() {
     let basketSum = 0;
