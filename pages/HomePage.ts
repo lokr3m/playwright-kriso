@@ -18,7 +18,7 @@ export class HomePage extends BasePage {
   constructor(page: Page) {
     super(page);
     this.resultsTotal = this.page.locator('.sb-results-total');
-    this.addToCartLinks = this.page.getByRole('link', { name: /Lisa ostukorvi|Add to cart/i });
+    this.addToCartLinks = this.page.getByRole('link', { name: /Lisa ostukorvi|Add to (cart|basket)/i });
     this.addToCartMessage = this.page.locator('.item-messagebox');
     this.cartCount = this.page.locator('.cart-products');
     this.backButton = this.page.locator('.cartbtn-event.back');
@@ -101,7 +101,7 @@ export class HomePage extends BasePage {
   }
 
   async verifyAddToCartMessage() {
-    await expect(this.addToCartMessage).toContainText(/Toode lisati ostukorvi|added to (shopping )?cart/i);
+    await expect(this.addToCartMessage).toContainText(/Toode lisati ostukorvi|added to (shopping )?(cart|basket)/i);
   }
 
   async verifyCartCount(expectedCount: number) {
@@ -148,50 +148,70 @@ export class HomePage extends BasePage {
   }
 
   private async clickVisibleAddToCartByIndex(index: number) {
+    // If we're not on results page anymore, restart from home + search
+    const resultsVisible = await this.resultsTotal.first().isVisible().catch(() => false);
+    if (!resultsVisible) {
+      await this.page.goto(this.url, { waitUntil: 'domcontentloaded' });
+      await this.searchFor('tolkien');
+    }
+
     // Wait for results page
     await expect(this.resultsTotal.first()).toBeVisible({ timeout: 15_000 });
 
-    // Click product link from results.
-    // More robust than keyword anchors: take first links with any non-empty name,
-    // then filter by visibility.
+    // Pick a "product-like" link on the results page without relying on DOM classes
+    // or specific keywords (tolkien/harry potter/etc).
     const allLinks = this.page.getByRole('link');
     const total = await allLinks.count();
 
-    const visibleProductLinkIndexes: number[] = [];
-    const maxChecks = Math.min(total, 80);
+    const candidateIndexes: number[] = [];
+    const maxChecks = Math.min(total, 140);
 
     for (let i = 0; i < maxChecks; i += 1) {
       const link = allLinks.nth(i);
-      const name = (await link.innerText().catch(() => '')).trim();
-      if (!name) continue;
 
-      // Skip obvious nav links
+      const text = ((await link.innerText().catch(() => '')) || '').trim();
+      if (!text) continue;
+
+      const lower = text.toLowerCase();
+
+      // Skip obvious header/nav links
       if (
-        /bestsellers|e-platforms|books in stock|help|log in|new account|categories|books|e-books/i.test(
-          name
+        /bestsellers|e-platforms|books in stock|help|log in|new account|categories|books|e-books|music books|language teaching materials|special offers|advanced search|shopping basket|wish list|your account|eng/.test(
+          lower
         )
       ) {
         continue;
       }
 
+      // Product titles are usually not super short
+      if (text.length < 6) continue;
+
       if (await link.isVisible().catch(() => false)) {
-        visibleProductLinkIndexes.push(i);
+        candidateIndexes.push(i);
       }
 
-      if (visibleProductLinkIndexes.length >= 10) break;
+      if (candidateIndexes.length >= 25) break;
     }
 
-    if (visibleProductLinkIndexes.length === 0) {
-      throw new Error('No visible product links found on the results page.');
+    if (candidateIndexes.length === 0) {
+      throw new Error('No product-like links found on the results page.');
     }
 
-    const safeVisibleIndex = Math.min(index, visibleProductLinkIndexes.length - 1);
-    await allLinks.nth(visibleProductLinkIndexes[safeVisibleIndex]).click();
+    const safe = Math.min(index, candidateIndexes.length - 1);
+    await allLinks.nth(candidateIndexes[safe]).click();
 
-    // Now on product page: click add-to-cart
+    // Now on product page: click add-to-cart (multiple fallbacks)
     const addToCart = this.page
-      .getByRole('button', { name: /Lisa ostukorvi|Ostukorvi|Add to cart/i })
-      .or(this.page.getByRole('link', { name: /Lisa ostukorvi|Ostukorvi|Add to cart/i }))
+      .getByRole('button', { name: /Lisa ostukorvi|Ostukorvi|Add to (cart|basket)/i })
+      .or(this.page.getByRole('link', { name: /Lisa ostukorvi|Ostukorvi|Add to (cart|basket)/i }))
+      // common input submit buttons
+      .or(
+        this.page.locator(
+          'input[type="submit"][value*="ostukorvi" i], input[type="submit"][value*="cart" i], input[type="submit"][value*="basket" i]'
+        )
+      )
+      // common forms/buttons without good accessible name
+      .or(this.page.locator('form[action*="cart" i] button, form[action*="basket" i] button'))
       .first();
 
     await expect(addToCart).toBeVisible({ timeout: 15_000 });
